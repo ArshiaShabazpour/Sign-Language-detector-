@@ -46,7 +46,8 @@ This project aims to detect hand landmarks and interpret the sign language meani
 - **Save Captured Data**: Press `s` to store in `data/Landmark_data.csv`.
 
 ### 🖥️ Detection Mode
-View real-time predictions of hand gestures, displayed on-screen for user feedback.
+- **View real-time predictions of the hand gestures**
+- **Predictions are displayed on-screen**
 
 ## 📁 Project Structure
 
@@ -58,16 +59,6 @@ View real-time predictions of hand gestures, displayed on-screen for user feedba
 - **LSTM Model Integration**: To account for motion-dependent gestures, enhancing recognition with sequential data.
 - **Expanded Vocabulary**: Include words and complex gestures.
 
-## 🖼️ Suggested Visual Enhancements
-
-- **Screenshots**:
-  - Mode Selection Screen and Detection Mode in Action.
-- **GIFs**:
-  - Real-time Gesture Detection.
-  - Data Capture Workflow for a letter.
-- **Video Tutorials**:
-  - Setting Up and Running the App.
-  - Real-Time Gesture Recognition Demo.
 
 ## 🙏 Acknowledgments
 - **OpenCV** for video handling.
