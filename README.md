@@ -10,7 +10,6 @@ This project aims to detect hand landmarks and interpret the sign language meani
   - [🖥️ Detection Mode](#detection-mode)
 - [📁 Project Structure](#-project-structure)
 - [📈 Future Enhancements](#-future-enhancements)
-- [🖼️ Suggested Visual Enhancements](#-suggested-visual-enhancements)
 - [🙏 Acknowledgments](#-acknowledgments)
 
 ## ✨ Features
@@ -53,6 +52,7 @@ This project aims to detect hand landmarks and interpret the sign language meani
 
 - `data/Landmark_data.csv`: Stores captured training data.
 - `data_collection.py`: Main script for video input, hand landmark detection, and data collection.
+- `hand_landmarker`: Required dependency for Mediapipe to function. 
 
 ## 📈 Future Enhancements
 
