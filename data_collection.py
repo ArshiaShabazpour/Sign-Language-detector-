@@ -27,42 +27,76 @@ print(score)
 
 
 
-def draw_landmarks_on_image(rgb_image, detection_result,font_size=1,font_thickness=1,handness_color=(225,225,225),handness_border_color = (0,0,0),margin=15):
-  annotated_image = rgb_image
-  hand_landmarks_list = detection_result.hand_landmarks
-  hand_world_landmarks_list = detection_result.hand_world_landmarks
-  handedness_list = detection_result.handedness
+def draw_landmarks_on_image(rgb_image, hand_detection_result=None, pose_detection_result=None, face_detection_result=None, font_size=1, font_thickness=1, handness_color=(225, 225, 225), handness_border_color=(0, 0, 0), margin=15):
+    annotated_image = rgb_image
 
-  for i in range(len(hand_landmarks_list)):
-    hand_landmarks = hand_landmarks_list[i]
-    handedness = handedness_list[i]
+    if hand_detection_result:
+        hand_landmarks_list = hand_detection_result.hand_landmarks
+        handedness_list = hand_detection_result.handedness
 
-    hand_landmarks_normalized = landmark_pb2.NormalizedLandmarkList()
-    for landmark in hand_landmarks:
-        normalized_landmark = landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z)
-        hand_landmarks_normalized.landmark.extend([normalized_landmark])
-        
-    solutions.drawing_utils.draw_landmarks(
-      annotated_image,
-      hand_landmarks_normalized,
-      solutions.hands.HAND_CONNECTIONS,
-      solutions.drawing_styles.get_default_hand_landmarks_style(),
-      solutions.drawing_styles.get_default_hand_connections_style())
-    
-  annotated_image = cv.flip(annotated_image,1)
+        for i in range(len(hand_landmarks_list)):
+            hand_landmarks = hand_landmarks_list[i]
+            handedness = handedness_list[i]
 
-  for i in range(len(hand_landmarks_list)):
-    hand_landmarks = hand_landmarks_list[i]
-    handedness = handedness_list[i]
-    x_coordinates = [landmark.x for landmark in hand_landmarks]
-    y_coordinates = [landmark.y for landmark in hand_landmarks]
-    text_x = int(annotated_image.shape[1]- (max(x_coordinates) * annotated_image.shape[1])) 
-    text_y = int(min(y_coordinates) * annotated_image.shape[0]) - margin
+            hand_landmarks_normalized = landmark_pb2.NormalizedLandmarkList()
+            for landmark in hand_landmarks:
+                normalized_landmark = landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z)
+                hand_landmarks_normalized.landmark.extend([normalized_landmark])
 
-    cv.putText(annotated_image, handedness[0].display_name, (text_x, text_y), cv.FONT_HERSHEY_TRIPLEX, font_size, handness_border_color, font_thickness+2)
-    cv.putText(annotated_image, handedness[0].display_name, (text_x, text_y), cv.FONT_HERSHEY_TRIPLEX,font_size, handness_color, font_thickness)
-    
-  return annotated_image
+            solutions.drawing_utils.draw_landmarks(
+                annotated_image,
+                hand_landmarks_normalized,
+                solutions.hands.HAND_CONNECTIONS,
+                solutions.drawing_styles.get_default_hand_landmarks_style(),
+                solutions.drawing_styles.get_default_hand_connections_style()
+            )
+
+
+# Draw pose landmarks
+    if pose_results.pose_landmarks:
+        proto = landmark_pb2.NormalizedLandmarkList()
+
+        for pose_landmarks in pose_results.pose_landmarks:
+                    for test in pose_landmarks:
+                        proto.landmark.add(x=test.x, y=test.y, z=test.z)
+                    landmarks_proto = proto
+                    mp.solutions.drawing_utils.draw_landmarks(
+                        annotated_image,
+                        landmarks_proto,
+                        mp.solutions.pose.POSE_CONNECTIONS,
+                        mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                        mp.solutions.drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=2),
+                    )
+
+            # Draw face landmarks
+    if face_results.face_landmarks:
+                proto = landmark_pb2.NormalizedLandmarkList()
+                for face_landmarks in face_results.face_landmarks:
+                    for test in face_landmarks:
+                        proto.landmark.add(x=test.x, y=test.y, z=test.z)
+                    landmarks_proto = proto
+                    mp.solutions.drawing_utils.draw_landmarks(
+                        annotated_image,
+                        landmarks_proto,
+                        mp.solutions.face_mesh.FACEMESH_TESSELATION,
+                        mp.solutions.drawing_utils.DrawingSpec(color=(80, 110, 10), thickness=1, circle_radius=1),
+                        mp.solutions.drawing_utils.DrawingSpec(color=(80, 256, 121), thickness=1, circle_radius=1),
+                    )
+
+
+    annotated_image = cv.flip(annotated_image, 1)
+    for i in range(len(hand_landmarks_list)):
+            hand_landmarks = hand_landmarks_list[i]
+            handedness = handedness_list[i]
+            x_coordinates = [landmark.x for landmark in hand_landmarks]
+            y_coordinates = [landmark.y for landmark in hand_landmarks]
+            text_x = int(annotated_image.shape[1] - (max(x_coordinates) * annotated_image.shape[1]))
+            text_y = int(min(y_coordinates) * annotated_image.shape[0]) - margin
+
+            cv.putText(annotated_image, handedness[0].display_name, (text_x, text_y), cv.FONT_HERSHEY_TRIPLEX, font_size, handness_border_color, font_thickness + 2)
+            cv.putText(annotated_image, handedness[0].display_name, (text_x, text_y), cv.FONT_HERSHEY_TRIPLEX, font_size, handness_color, font_thickness)
+    return annotated_image
+
 
 def draw_detection_box(results,image,character):
    annotated_image = cv.flip(image,1)
@@ -116,14 +150,28 @@ def train_model():
    
    return None
 
+
 base_options = python.BaseOptions(model_asset_path='hand_landmarker.task')
+
 options = vision.HandLandmarkerOptions(
     base_options=base_options,
     num_hands=2,
     min_tracking_confidence	=0.5,
     min_hand_detection_confidence = 0.5
 )
-detector = vision.HandLandmarker.create_from_options(options)
+pose_options = mp.tasks.vision.PoseLandmarkerOptions(
+        base_options= mp.tasks.BaseOptions(model_asset_path="pose_landmarker_full.task"),
+        running_mode=mp.tasks.vision.RunningMode.IMAGE,
+    )
+pose_landmarker = mp.tasks.vision.PoseLandmarker.create_from_options(pose_options)
+
+face_options = mp.tasks.vision.FaceLandmarkerOptions(
+        base_options= mp.tasks.BaseOptions(model_asset_path="face_landmarker.task"),
+        running_mode=mp.tasks.vision.RunningMode.IMAGE,
+)
+face_landmarker =  mp.tasks.vision.FaceLandmarker.create_from_options(face_options)
+
+hand_landmarker = vision.HandLandmarker.create_from_options(options)
 webcam = cv.VideoCapture(0)
 
 mode = 0 
@@ -138,10 +186,11 @@ while True:
     if isTrue:
         RGB_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         media_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=RGB_frame)
-        results = detector.detect(media_image)
-
+        hands_results = hand_landmarker.detect(media_image)
+        face_results = face_landmarker.detect(media_image)
+        pose_results = pose_landmarker.detect(media_image)
         if mode == 0:   #mode selection 
-            annonated_picture = draw_landmarks_on_image(frame,results)
+            annonated_picture = draw_landmarks_on_image(frame,hands_results,pose_results,face_results)
             cv.putText(annonated_picture,"Mode Selection",(20,25),cv.FONT_HERSHEY_COMPLEX,0.5,(0,0,0),3)
             cv.putText(annonated_picture,"Mode Selection",(20,25),cv.FONT_HERSHEY_COMPLEX,0.5,(225,225,225),1)
             cv.putText(annonated_picture," . press 1 for capture mode",(20,40),cv.FONT_HERSHEY_COMPLEX,0.5,(0,0,0),3)
@@ -160,8 +209,8 @@ while True:
               mode = 2 
 
 
-        elif mode == 1:     #select letter mode 
-            annonated_picture = draw_landmarks_on_image(frame,results)
+        elif mode == 1:   #select letter mode 
+            annonated_picture = draw_landmarks_on_image(frame,hands_results,pose_results,face_results)
             if key == 27 : 
                mode = 0
             if key > 96 and key < 123:
@@ -173,13 +222,13 @@ while True:
             cv.imshow("webcam", annonated_picture)
 
         elif mode == 3: #saving mode 
-            annonated_picture = draw_landmarks_on_image(frame,results)
+            annonated_picture = draw_landmarks_on_image(frame,hands_results,pose_results,face_results)
             if key == 27 : 
                test = []
                mode = 1
             if key == 32:
                duplicate_switch = True
-               test = add_to_list(results,test,letter)
+               test = add_to_list(hands_results,test,letter)
             if key == 115 and duplicate_switch == True:
                duplicate_switch = False
                save_as_csv(test)
@@ -208,9 +257,9 @@ while True:
             testing_value = None
             if key == 27 : 
                mode = 0
-            if results.hand_landmarks:
-                hand_landmarks_list = results.hand_landmarks
-                handedness_list = results.handedness
+            if hands_results.hand_landmarks:
+                hand_landmarks_list = hands_results.hand_landmarks
+                handedness_list = hands_results.handedness
                 for i in range(len(hand_landmarks_list)):
                     handedness = handedness_list[i][0].display_name
                     handedness = 0 if handedness =="Left" else 1
@@ -226,7 +275,7 @@ while True:
                     print(testing_value)
                     predict_array = []
                     prediction_results.append(chr(prediction))
-                annonated_picture = draw_detection_box(results,frame,prediction_results)
+                annonated_picture = draw_detection_box(hands_results,frame,prediction_results)
                 prediction_results = []
             else:
                annonated_picture = cv.flip(frame,1)
