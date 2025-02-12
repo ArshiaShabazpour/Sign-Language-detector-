@@ -10,7 +10,10 @@ import pandas as pd
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-
+import time
+actions_map = {"Hello" : 1,
+                "Bye" : 2,
+                "World" :3 }
 
 dataset = r'data\Landmark_data.csv'
 X_dataset = np.loadtxt(dataset, delimiter=',', dtype='float32', usecols=list(range(1, 65)))
@@ -26,6 +29,32 @@ score = accuracy_score(y_predct,y_test)
 print(score)
 
 
+def extract_landmarks(hand_detection_result=None, pose_detection_result=None, face_detection_result=None):
+    landmarks= []
+    if hand_detection_result:
+        hand_landmarks_list = hand_detection_result.hand_landmarks
+        for i in range(len(hand_landmarks_list)):
+            hand_landmarks = hand_landmarks_list[i]
+            for landmark in hand_landmarks:
+                landmarks.append(landmark.x)
+                landmarks.append(landmark.y)
+                landmarks.append(landmark.z)
+
+
+    if pose_results.pose_landmarks:
+        for pose_landmarks in pose_results.pose_landmarks:
+                    for test in pose_landmarks:
+                        landmarks.append(test.x)
+                        landmarks.append(test.y)
+                        landmarks.append(test.z)
+
+    if face_results.face_landmarks:
+                for face_landmarks in face_results.face_landmarks:
+                    for test in face_landmarks:
+                        landmarks.append(test.x)
+                        landmarks.append(test.y)
+                        landmarks.append(test.z)
+    print(landmarks)
 
 def draw_landmarks_on_image(rgb_image, hand_detection_result=None, pose_detection_result=None, face_detection_result=None, font_size=1, font_thickness=1, handness_color=(225, 225, 225), handness_border_color=(0, 0, 0), margin=15):
     annotated_image = rgb_image
@@ -114,7 +143,6 @@ def draw_detection_box(results,image,character):
     cv.rectangle(annotated_image,(x_top_right-3,y_top_right-20),(((x_bottom_left+x_top_right)//2) -20,y_top_right),(0,0,0),thickness=-1)
     cv.putText(annotated_image,character[i],(x_top_right+5,y_top_right),cv.FONT_HERSHEY_TRIPLEX,color=(0,225,0),fontScale=0.75)
 
-    
    return annotated_image
 def save_as_csv(list_dictionary):
     data_frame = pd.DataFrame(list_dictionary)
@@ -189,6 +217,7 @@ while True:
         hands_results = hand_landmarker.detect(media_image)
         face_results = face_landmarker.detect(media_image)
         pose_results = pose_landmarker.detect(media_image)
+
         if mode == 0:   #mode selection 
             annonated_picture = draw_landmarks_on_image(frame,hands_results,pose_results,face_results)
             cv.putText(annonated_picture,"Mode Selection",(20,25),cv.FONT_HERSHEY_COMPLEX,0.5,(0,0,0),3)
@@ -208,20 +237,43 @@ while True:
             if key == 50:
               mode = 2 
 
+        elif mode == 1:
+            for action in actions_map.keys():
+                for i in range(30):
+                    if mode == 0:  
+                        break
+                    for j in range(30):
+                        isTrue, frame = webcam.read()
+                        if not isTrue:
+                            break
 
-        elif mode == 1:   #select letter mode 
-            annonated_picture = draw_landmarks_on_image(frame,hands_results,pose_results,face_results)
-            if key == 27 : 
-               mode = 0
-            if key > 96 and key < 123:
-               letter = chr(key) 
-               mode = 3
-               key == None
-            cv.putText(annonated_picture,f"please select the letter you want to sign",(20,25),cv.FONT_HERSHEY_COMPLEX,0.5,(0,0,0),3)
-            cv.putText(annonated_picture,f"please select the letter you want to sign",(20,25),cv.FONT_HERSHEY_COMPLEX,0.5,(225,225,225),1)
-            cv.imshow("webcam", annonated_picture)
+                        RGB_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+                        media_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=RGB_frame)
+                        hands_results = hand_landmarker.detect(media_image)
+                        face_results = face_landmarker.detect(media_image)
+                        pose_results = pose_landmarker.detect(media_image)
+                        annonated_picture = draw_landmarks_on_image(frame, hands_results, pose_results, face_results)
+                        
+                        cv.putText(annonated_picture, f"Please do the sign for {action} {i}", (20, 25), 
+                                        cv.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 3)
+                        cv.putText(annonated_picture, f"Please do the sign for {action} {i}", (20, 25), 
+                                        cv.FONT_HERSHEY_COMPLEX, 0.5, (225, 225, 225), 1)
+                        cv.imshow("webcam", annonated_picture)
+                        if j == 0:
+                            cv.putText(annonated_picture, f"Getting ready to collect Frames!", (150, 225), 
+                                        cv.FONT_HERSHEY_COMPLEX, 0.75, (0, 225, 0), 3)
+                            cv.imshow("webcam", annonated_picture)
+                            cv.waitKey(2000)
 
-        elif mode == 3: #saving mode 
+                        key = cv.waitKey(1) & 0xFF
+
+                        if key == 27:  
+                            mode = 0
+                            break
+                    if mode == 0:
+                        break
+
+        elif mode == 3: 
             annonated_picture = draw_landmarks_on_image(frame,hands_results,pose_results,face_results)
             if key == 27 : 
                test = []
@@ -251,6 +303,7 @@ while True:
             cv.putText(annonated_picture," . press \"esc\" to go back",(20,85),cv.FONT_HERSHEY_COMPLEX,0.5,(0,0,0),3)
             cv.putText(annonated_picture," . press \"esc\" to go back",(20,85),cv.FONT_HERSHEY_COMPLEX,0.5,(225,225,225),1)
             cv.imshow("webcam", annonated_picture)
+    
         elif mode == 2:
             predict_array = []
             prediction_results = []
